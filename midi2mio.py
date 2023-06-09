@@ -158,12 +158,16 @@ for track in midi.instruments[:4]:
         start = note.start.item()
         end = note.end.item()
         if notes[j][i] != 255:
-            note = int(note.pitch - 43)
+            note = int(note.pitch)
             if note < 0 or note > 24:
                 print(
                     "AAAAA", note, "missing I'm replacing it with", int(note % 12 + 12)
                 )
                 note = int(note % 12 + 12)
+            if note > 43:
+                note -= 43
+            else:
+                note = 255
             if start not in note_dex_start[j]:
                 note_dex_start[j].append(i)
             else:
