@@ -119,6 +119,96 @@ instrument_lookup = [
     80,
     80,
 ]
+octaves = {
+    "21": "14",
+    "22": "15",
+    "23": "16",
+    "24": "17",
+    "25": "18",
+    "26": "19",
+    "27": "20",
+    "28": "21",
+    "29": "22",
+    "30": "23",
+    "31": "0",
+    "32": "1",
+    "33": "2",
+    "34": "3",
+    "35": "4",
+    "36": "5",
+    "37": "6",
+    "38": "7",
+    "39": "8",
+    "40": "9",
+    "41": "10",
+    "42": "11",
+    "43": "12",
+    "44": "13",
+    "45": "14",
+    "46": "15",
+    "47": "16",
+    "48": "17",
+    "49": "18",
+    "50": "19",
+    "51": "20",
+    "52": "21",
+    "53": "22",
+    "54": "23",
+    "55": "0",
+    "56": "1",
+    "57": "2",
+    "58": "3",
+    "59": "4",
+    "60": "5",
+    "61": "6",
+    "62": "7",
+    "63": "8",
+    "64": "9",
+    "65": "10",
+    "66": "11",
+    "67": "12",
+    "68": "13",
+    "69": "14",
+    "70": "15",
+    "71": "16",
+    "72": "17",
+    "73": "18",
+    "74": "19",
+    "75": "20",
+    "76": "21",
+    "77": "22",
+    "78": "23",
+    "79": "24",
+    "80": "1",
+    "81": "2",
+    "82": "3",
+    "83": "4",
+    "84": "5",
+    "85": "6",
+    "86": "7",
+    "87": "8",
+    "88": "9",
+    "89": "10",
+    "90": "11",
+    "91": "12",
+    "92": "13",
+    "93": "14",
+    "94": "15",
+    "95": "16",
+    "96": "17",
+    "97": "18",
+    "98": "19",
+    "99": "20",
+    "100": "21",
+    "101": "22",
+    "102": "23",
+    "103": "24",
+    "104": "1",
+    "105": "2",
+    "106": "3",
+    "107": "4",
+    "108": "5",
+}
 times = [0, 0, 0, 0]
 mid2 = mido.MidiFile(sys.argv[1])
 for i, track in enumerate(mid2.tracks):
@@ -151,55 +241,45 @@ beat = 60 / tempo
 i = 0
 j = 0
 
-for track in midi.instruments[:4]:
+for i, track in enumerate(mid2.tracks):
     i = 0
     l = 0
-    for note in track.notes:
-        start = note.start.item()
-        end = note.end.item()
-        if notes[j][i] != 255:
-            pitch = note.pitch
-            note = int(note.pitch - 43)
-            if note < 0 or note > 24:
-                try:
-                    for m in range(1, 11):
-                        if note > 24:
-                            note -= 12
-                        else:
-                            break
-                except:
-                    note = 255
-            if start not in note_dex_start[j]:
-                note_dex_start[j].append(i)
-            else:
-                m = j
-                while notes[m][i] != 0:
-                    notes[m][i] = u8(note)
-                    m += 1
-                continue
-            if end not in note_dex_end[j]:
-                note_dex_end[j].append(i)
-            else:
-                m = j
-                while notes[m][i] != 0:
-                    notes[m][i] = u8(note)
-                    m += 1
-                continue
-            if l == 0:
-                if int((start) / beat * 3) + 1 > 0:
-                    for k in range(1, int((start) / beat * 4) + 1):
+    n = 0
+    end_index = 0
+    for msg in track:
+        if msg.type == "note_on":
+            if j > 3:
+                break
+            if notes[j][i] != 255:
+                note = int(octaves[str(msg.note)])
+                """if start not in note_dex_start[j]:
+                    note_dex_start[j].append(i)
+                else:
+                    m = j
+                    while notes[m][i] != 0:
+                        m += 1
+                        notes[m][i] = u8(note)
+                    continue
+                if end not in note_dex_end[j]:
+                    note_dex_end[j].append(i)
+                else:
+                    m = j
+                    while notes[m][i] != 0:
+                        m += 1
+                        notes[m][i] = u8(note)
+                    continue"""
+                notes[j][i] = u8(note)
+                if midi.tick_to_time(msg.time) > 0:
+                    for k in range(1, int(midi.tick_to_time(msg.time) * 4) + 1):
                         notes[j][i + k] = u8(255)
-                    i += int((start) / beat * 4)
-            notes[j][i] = u8(note)
-            if int((end - start) / beat * 3) + 1 > 0:
-                for k in range(1, int((end - start) / beat * 3) + 1):
-                    notes[j][i + k] = u8(255)
-                i += int((end - start) / beat * 3)
-            l += 1
-        else:
-            continue
-        i += 1
-    j += 1
+                    i += int(midi.tick_to_time(msg.time) * 4) + 1
+                l += 1
+            else:
+                continue
+            i += 1
+            n += 1
+    if n > 0:
+        j += 1
 
 for instrument in midi.instruments:
     try:
@@ -239,15 +319,12 @@ with open(sys.argv[1].replace(".mid", "") + ".mio", "wb") as f:
             offset = 0x107 + 0x114 * block_num + 0x100 + track_num
             f.seek(offset)
             f.write(volume)
-            print(volume)
-            print(offset, volume)
         track_num += 1
     track_num = 0
     for instrument in instruments:
         for block_num in range(1, 25):
             offset = 0x107 + 0x114 * block_num + 0x10A + track_num
             if instrument != 0:
-                print(instrument)
                 f.seek(offset)
                 f.write(instrument)
         track_num += 1
@@ -262,7 +339,6 @@ with open(sys.argv[1].replace(".mid", "") + ".mio", "wb") as f:
     f.seek(207)
     f.write(b"midi\x00\x00\x00")
     f.seek(257)
-    print(tempo)
     tempo = int((tempo - 60) / 10)
 
     if tempo > 10:
