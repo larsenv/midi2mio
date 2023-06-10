@@ -241,13 +241,24 @@ beat = 60 / tempo
 i = 0
 j = 0
 
+for track in mid2.tracks:
+    for msg in track:
+        if msg.type == "set_tempo":
+            ticks_per_beat = mido.tempo2bpm(msg.tempo)
+            break
+    if "ticks_per_beat" in locals():
+        break
+
+ticks_per_beat = mid2.ticks_per_beat
+
 for i, track in enumerate(mid2.tracks):
     i = 0
     l = 0
     n = 0
     end_index = 0
     for msg in track:
-        if msg.type == "note_on":
+        time_seconds = mido.tick2second(msg.time, ticks_per_beat, tempo)
+        if msg.type == "note_on" and msg.velocity > 0:
             if j > 3:
                 break
             if notes[j][i] != 255:
@@ -269,10 +280,10 @@ for i, track in enumerate(mid2.tracks):
                         notes[m][i] = u8(note)
                     continue"""
                 notes[j][i] = u8(note)
-                if midi.tick_to_time(msg.time) > 0:
-                    for k in range(1, int(midi.tick_to_time(msg.time) * 4) + 1):
+                if time_seconds > beat / 4:
+                    for k in range(1, int(time_seconds * 4) + 1):
                         notes[j][i + k] = u8(255)
-                    i += int(midi.tick_to_time(msg.time) * 4) + 1
+                    i += int(time_seconds * 4) + 1
                 l += 1
             else:
                 continue
