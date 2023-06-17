@@ -211,10 +211,12 @@ octaves = {
 }
 times = [0, 0, 0, 0]
 mid2 = mido.MidiFile(sys.argv[1])
+tempo = None
 for i, track in enumerate(mid2.tracks):
     for msg in track:
         if msg.type == "set_tempo":
             tempo = mido.tempo2bpm(msg.tempo)
+            print(tempo)
 
 
 def u8(data):
@@ -326,8 +328,8 @@ with open(sys.argv[1].replace(".mid", "") + ".mio", "wb") as f:
     f.seek(257)
     tempo = int((tempo - 60) / 10)
 
-    if tempo > 10:
-        tempo = 10
+    if tempo > 16:
+        tempo = 16
     f.write(u8(tempo))
 
 
