@@ -212,7 +212,7 @@ octaves = {
 times = [0, 0, 0, 0]
 mid2 = mido.MidiFile(sys.argv[1])
 tempo = None
-for i, track in enumerate(mid2.tracks):
+for track in mid2.tracks:
     for msg in track:
         if msg.type == "set_tempo":
             tempo = mido.tempo2bpm(msg.tempo)
@@ -224,7 +224,7 @@ def u8(data):
 
 
 # Iterate over tracks in the MIDI file
-for i, track in enumerate(mid2.tracks):
+for track in mid2.tracks:
     # Iterate over messages in the current track
     for msg in track:
         if msg.type == "control_change" and msg.control == 7:
@@ -241,33 +241,28 @@ last = 0
 beat = 60 / tempo
 
 i = 0
-j = 0
-
-for track in midi.instruments[:4]:
+for j, track in enumerate(midi.instruments[:4]):
     i = 0
     l = 0
     for note in track.notes:
         start = note.start.item()
         end = note.end.item()
-        if notes[j][i] != 255:
-            pitch = note.pitch
-            note = int(octaves[str(pitch)])
-            if l == 0:
-                if int((start) / beat * 4) + 1 > 0:
-                    for k in range(1, int((start) / beat * 4) + 1):
-                        notes[j][i + k] = u8(255)
-                    i += int((start) / beat * 4)
-            notes[j][i] = u8(note)
-            if int((end - start) / beat * 4) + 1 > 0:
-                for k in range(1, int((end - start) / beat * 4) + 1):
-                    notes[j][i + k] = u8(255)
-                i += int((end - start) / beat * 4)
-            l += 1
-        else:
+        if notes[j][i] == 255:
             continue
+        pitch = note.pitch
+        note = int(octaves[str(pitch)])
+        if l == 0:
+            if int((start) / beat * 4) > -1:
+                for k in range(1, int((start) / beat * 4) + 1):
+                    notes[j][i + k] = u8(255)
+                i += int((start) / beat * 4)
+        notes[j][i] = u8(note)
+        if int((end - start) / beat * 4) > -1:
+            for k in range(1, int((end - start) / beat * 4) + 1):
+                notes[j][i + k] = u8(255)
+            i += int((end - start) / beat * 4)
+        l += 1
         i += 1
-    j += 1
-
 for instrument in midi.instruments:
     try:
         instruments.append(u8(instrument_lookup.index(instrument.program)))
@@ -283,38 +278,30 @@ def chunks(lst, n):
 
 with open(sys.argv[1].replace(".mid", "") + ".mio", "wb") as f:
     f.write(mio)
-    track_num = 0
     k = 0
-    for track in notes:
+    for track_num, track in enumerate(notes):
         blocks = chunks(track, 32)
         block_num = 0
         for block in blocks:
             if block_num < 24:
-                position_num = 0
-                for note in block:
+                for position_num, note in enumerate(block):
                     offset = 0x107 + 0x114 * block_num + track_num * 0x20 + position_num
                     if note != 0:
                         f.seek(offset)
                         f.write(note)
-                    position_num += 1
                 block_num += 1
                 k += 1
-        track_num += 1
-    track_num = 0
-    for volume in volumes[:5]:
+    for track_num, volume in enumerate(volumes[:5]):
         for block_num in range(1, 25):
             offset = 0x107 + 0x114 * block_num + 0x100 + track_num
             f.seek(offset)
             f.write(volume)
-        track_num += 1
-    track_num = 0
-    for instrument in instruments:
+    for track_num, instrument in enumerate(instruments):
         for block_num in range(1, 25):
             offset = 0x107 + 0x114 * block_num + 0x10A + track_num
             if instrument != 0:
                 f.seek(offset)
                 f.write(instrument)
-        track_num += 1
     f.seek(0)
     f.write(
         binascii.unhexlify(
@@ -328,8 +315,7 @@ with open(sys.argv[1].replace(".mid", "") + ".mio", "wb") as f:
     f.seek(257)
     tempo = int((tempo - 60) / 10)
 
-    if tempo > 16:
-        tempo = 16
+    tempo = min(tempo, 16)
     f.write(u8(tempo))
 
 
@@ -350,19 +336,14 @@ with open(sys.argv[1].replace(".mid", "") + ".mio", "rb") as f:
     read = f.read()
 
 with open(sys.argv[1].replace(".mid", "") + ".mio", "wb") as f:
-    checkSumOne = 0
-    checkSumTwo = 0
-
     f.write(read[:8192])
 
     for i in range(16, 23):
         f.seek(i)
         f.write(u8(0))
 
-    for i in range(0, 256):
-        checkSumOne += read[i] & 0xFF
-    for i in range(256, len(read)):
-        checkSumTwo += read[i] & 0xFF
+    checkSumOne = sum(read[i] & 0xFF for i in range(0, 256))
+    checkSumTwo = sum(read[i] & 0xFF for i in range(256, len(read)))
     f.seek(19)
     f.write(u8((checkSumOne >> 24) & 0xFF))
     f.seek(18)
